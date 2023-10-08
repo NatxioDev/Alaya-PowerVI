@@ -3,9 +3,9 @@ from PIL import Image
 from midiutil import MIDIFile
 from mingus.core import chords
 
-IMAGEN_NAME = 'images/fire.jpeg'
+IMAGEN_NAME = 'images/ejemplo.jpg'
 RESOLUTION = (100, 100)
-tempo = 30
+tempo = 50
 chord_progression = ["Cmaj7", "Dm7", "Em7", "Fmaj7", "G7", "Am7", "Bm7b5", "Cmaj7"]
 # chord_progression = ["Gm", "Cm", "Dm"]
 INSTRUMENTS = [[96,96],[45,46],[25,26], [34,35]]
@@ -13,8 +13,6 @@ INSTRUMENTS = [[96,96],[45,46],[25,26], [34,35]]
 # 1: Strings
 # 2: Guitar
 INSTRUMENTS_TYPE = 0
-
-
 
 
 NOTES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
@@ -94,18 +92,14 @@ def imageToMidi():
     imagen = imagen.resize(nueva_resolucion, Image.NEAREST)
     rgb_im = imagen.convert('RGB')
 
-
     array_of_notes = []
     for chord in chord_progression:
         array_of_notes.extend(chords.from_shorthand(chord))
-
-
 
     array_of_note_numbers = []
     for note in array_of_notes:
         OCTAVE = 4
         array_of_note_numbers.append(note_to_number(note, OCTAVE))
-
 
     ancho, alto = imagen.size
 
@@ -117,14 +111,13 @@ def imageToMidi():
 
             aux = int((r + g + b) / 3)
             pixel_rgb.append(aux)
-
         
-    finalPixel = mantener_elementos_unicos_seguidos(pixel_rgb)
 
+    finalPixel = mantener_elementos_unicos_seguidos(pixel_rgb)
 
     finalPixel = convertir_rango(finalPixel, len(array_of_note_numbers)-1)
 
-    finalPixel = finalPixel[:1024]
+    finalPixel = finalPixel[:512]
 
     track = 0
     channel = 0
@@ -133,7 +126,7 @@ def imageToMidi():
     volume = 100  
 
 
-    midi = MIDIFile(2)
+    midi = MIDIFile(4)
 
     midi.addTempo(0, 0, tempo)
 
@@ -141,6 +134,7 @@ def imageToMidi():
     trayectoria = list(range(0, 128, 8)) + list(range(128, 0, -8))
     velocidad = list(range(60, 120, 6)) + list(range(120, 60, -6))
 
+    import random
 
     for i, pitch in enumerate(finalPixel):
         tiempo = i / 4  
@@ -151,15 +145,25 @@ def imageToMidi():
         midi.addControllerEvent(0, channel, tiempo, 10, deg)
         midi.addControllerEvent(0, channel, tiempo, 7, vel)  
 
+        
+
         if(i%1==0):
-            midi.addNote(0, channel, array_of_note_numbers[pitch] + 7, tiempo, duration, volume)
+            midi.addNote(0, channel, array_of_note_numbers[pitch] + 7, tiempo, random.uniform(0.25, 0.75), volume)
         
         if(i%16==0):
             midi.addNote(1, 1, array_of_note_numbers[pitch], tiempo, 4, volume)
 
+        if(i%8==0):
+            midi.addNote(2, 2, 36,tiempo, 1/2, volume)
+
+        if(i%16==0):
+            midi.addNote(3, 3, array_of_note_numbers[pitch] - 7,tiempo, 4, volume)
+
 
     midi.addProgramChange(0,0,0,INSTRUMENTS[INSTRUMENTS_TYPE][0])
     midi.addProgramChange(1,1,0,INSTRUMENTS[INSTRUMENTS_TYPE][1])
+    midi.addProgramChange(2,2,0,117)
+    midi.addProgramChange(3,3,0,34)
 
 
 
@@ -182,8 +186,6 @@ def midi_to_mp3():
     os.system(fluidsynth_cmd)
 
     print("Archivo WAV generado: sonification.wav")
-
-
 
 
 imageToMidi()
